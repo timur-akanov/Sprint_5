@@ -19,7 +19,7 @@ def login_and_add_product():
     dr = webdriver.Chrome()
     dr.maximize_window()
     dr.get('https://qa-desk.education-services.ru/')
-    wait = WebDriverWait(dr, 10)
+    wait = WebDriverWait(dr, 30)
     
     # 1. Нажать кнопку «Вход и регистрация»
     wait.until(EC.element_to_be_clickable(LoginPageLocators.LOGIN_MAIN_BUTTON)).click()
@@ -92,8 +92,10 @@ def login_and_add_product():
     dr.execute_script("arguments[0].click();", random_button)
 
 
-    city_trigger = wait.until(EC.element_to_be_clickable(LoginPageLocators.CITY_DROPDOWN)).click()
-    time.sleep(2)  # Ждем появления опций города
+    # Получаем триггер для выбора города (не присваиваем результат .click())
+    city_trigger = wait.until(EC.element_to_be_clickable(LoginPageLocators.CITY_DROPDOWN))
+    # Кликаем по триггеру после скролла ниже
+    time.sleep(0.5)  # Ждем небольшую паузу
 
     
 
@@ -101,37 +103,92 @@ def login_and_add_product():
 
     # --- БЛОК ВЫБОРА СЛУЧАЙНОГО ГОРОДА (ОБНОВЛЕННЫЙ) ---
     print("Открываем выпадающий список городов...")
-    
-    # 12a. Ищем ЛЮБОЙ элемент, содержащий текст "Москва", который служит триггером
-    # city_trigger = wait.until(EC.element_to_be_clickable(LoginPageLocators.CITY_DROPDOWN)).click()
-    dr.execute_script("arguments[0].scrollIntoView({block: 'center'});", city_trigger)
-    time.sleep(2)
-    
-    # Кликаем через JavaScript, чтобы обойти любые невидимые перекрытия
-    dr.execute_script("arguments[0].click();", city_trigger)
 
-    # 12b. Ждем, пока откроется список городов (используем универсальный поиск по классу меню)
-    menu_locator = (By.CSS_SELECTOR, "div[class*='options'], div[class*='dropDownMenu']")
+    # Открываем список городов
+    dr.execute_script("arguments[0].scrollIntoView({block: 'center'});", city_trigger)
+    time.sleep(0.5)
+    try:
+        dr.execute_script("arguments[0].click();", city_trigger)
+    except Exception:
+        try:
+            city_trigger.click()
+        except Exception:
+            pass
+
+    # Ждём появления меню городов
+    menu_locator = (By.CSS_SELECTOR, "div[class*='options'], div[class*='dropDownMenu'], div[class^='dropDownMenu_options']")
     wait.until(EC.visibility_of_element_located(menu_locator))
     time.sleep(0.5)
-    
-    # 12c. Собираем все доступные кнопки городов внутри этого меню
-    city_buttons = dr.find_elements(By.CSS_SELECTOR, "div[class*='options'] button, div[class*='dropDownMenu'] button")
-    if not city_buttons:
-        # Альтернативный поиск, если города лежат в других тегах
-        city_buttons = dr.find_elements(By.XPATH, "//div[contains(@class, 'options')]//*")
-        
-    if not city_buttons:
+
+    # Собираем кандидатов: кнопки, li, a и любые элементы внутри меню
+    candidates = []
+    selectors = [
+        "div[class*='options'] button",
+        "div[class*='dropDownMenu'] button",
+        "div[class*='dropDownMenu_options'] button",
+        "div[class*='options'] li",
+        "div[class*='dropDownMenu'] li",
+        "div[class*='options'] a",
+        "div[class*='dropDownMenu'] a",
+        "div[class*='dropDownMenu_options'] li",
+        "div[class*='dropDownMenu_options'] a",
+    ]
+    for sel in selectors:
+        try:
+            elems = dr.find_elements(By.CSS_SELECTOR, sel)
+        except Exception:
+            elems = []
+        for el in elems:
+            try:
+                text = el.text.strip()
+            except Exception:
+                text = dr.execute_script("return (arguments[0].textContent||'').trim();", el)
+            if text:
+                candidates.append((el, text))
+
+    # Если кандидаты не найдены, попробуем собрать любую текстовую информацию из контейнера меню
+    if not candidates:
+        try:
+            menu = dr.find_element(*menu_locator)
+            lines = dr.execute_script("return (arguments[0].innerText||'').split('\n').map(s=>s.trim()).filter(Boolean);", menu)
+            for ln in lines:
+                if ln:
+                    # Попытка найти элемент по тексту внутри меню
+                    try:
+                        el = menu.find_element(By.XPATH, ".//*[normalize-space(text())='{}']".format(ln))
+                        candidates.append((el, ln))
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+    if not candidates:
         raise Exception("Города в выпадающем меню не найдены!")
-        
-    # 12d. Выбираем случайный город
-    random_city_button = random.choice(city_buttons)
-    city_text = dr.execute_script("return arguments[0].textContent;", random_city_button)
+
+    # Выбираем случайный город из видимых кандидатов, если есть
+    visible_candidates = []
+    for el, text in candidates:
+        try:
+            if el.is_displayed() and el.is_enabled():
+                visible_candidates.append((el, text))
+        except Exception:
+            # если is_displayed упало, всё равно добавим
+            visible_candidates.append((el, text))
+
+    if visible_candidates:
+        el, city_text = random.choice(visible_candidates)
+    else:
+        el, city_text = random.choice(candidates)
+
+    city_text = city_text.strip()
     print(f"Выбираем город: {city_text}")
-    
-    # 12e. Кликаем по выбранному городу
-    dr.execute_script("arguments[0].click();", random_city_button)
-    time.sleep(1)
+    try:
+        dr.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+    except Exception:
+        pass
+    time.sleep(0.3)
+    dr.execute_script("arguments[0].click();", el)
+    time.sleep(0.8)
 
 
 
@@ -154,6 +211,77 @@ def login_and_add_product():
     prince_locator = (By.CSS_SELECTOR, 'input[placeholder="Стоимость"]') 
     wait.until(EC.visibility_of_element_located(prince_locator))
     prince_input.send_keys("1000")  # Ввод стоимости товара
+
+    # 14a. Случайный выбор состояния товара (radio buttons)
+    # Попытаемся найти стандартные input[type=radio]
+    radios_visible = []
+    try:
+        radios = dr.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+        radios_visible = [r for r in radios if (r.is_displayed() and r.is_enabled())]
+    except Exception:
+        radios_visible = []
+
+    # Альтернативные селекторы для кастомных радио-кнопок (div/label/button с классом radio или role=radio)
+    if not radios_visible:
+        alt_selectors = [
+            "*[role='radio']",
+            "label[class*='radio']",
+            "div[class*='radio']",
+            "button[class*='radio']",
+            "div[class*='Radio']",
+            "label[class*='Radio']",
+        ]
+        alt_candidates = []
+        for sel in alt_selectors:
+            try:
+                elems = dr.find_elements(By.CSS_SELECTOR, sel)
+            except Exception:
+                elems = []
+            for el in elems:
+                try:
+                    if el.is_displayed() and el.is_enabled():
+                        alt_candidates.append(el)
+                except Exception:
+                    alt_candidates.append(el)
+
+        # Уберём дубликаты (по id или по объекту)
+        radios_visible = []
+        seen = set()
+        for el in alt_candidates:
+            key = None
+            try:
+                key = el.get_attribute('id') or el.get_attribute('class') or el.text
+            except Exception:
+                key = None
+            if key in seen:
+                continue
+            seen.add(key)
+            radios_visible.append(el)
+
+    if radios_visible:
+        chosen_radio = random.choice(radios_visible)
+        try:
+            dr.execute_script("arguments[0].scrollIntoView({block: 'center'});", chosen_radio)
+        except Exception:
+            pass
+        time.sleep(0.2)
+        clicked = False
+        try:
+            dr.execute_script("arguments[0].click();", chosen_radio)
+            clicked = True
+        except Exception:
+            try:
+                chosen_radio.click()
+                clicked = True
+            except Exception:
+                clicked = False
+
+        if clicked:
+            print('Случайно выбран radio-button для состояния товара')
+        else:
+            print('Не удалось кликнуть по radio-button для состояния товара')
+    else:
+        print('Радио-кнопки состояния товара не найдены')
 
     # 15. Открытие выпадающего меню категорий (для проверки)
     # wait.until(EC.element_to_be_clickable(LoginPageLocators.CATEGORY_DROPDOWN)).click()  

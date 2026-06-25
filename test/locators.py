@@ -42,3 +42,9 @@ class LoginPageLocators:
     PRICE_INPUT = (By.CSS_SELECTOR, 'input[placeholder="Стоимость"]')
 
     PRODUCT_DESCRIPTION = (By.XPATH, "//textarea[@name='description']")
+    
+    # Дополнительные локаторы, используемые в тестах
+    CREATE_ACCOUNT_BUTTON = (By.XPATH, "//button[contains(text(), 'Создать аккаунт')]")
+    # Альясы для согласованности: иногда в скриптах используются разные имена
+    LOGIN_REG_BUTTON = (By.XPATH, "//button[text()='Вход и регистрация']")
+    LOGIN_SUBMIT_BUTTON = (By.XPATH, "//button[contains(text(), 'Войти')]")

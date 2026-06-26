@@ -1,0 +1,7 @@
+{
+  "test_locators.py": true,
+  "test_user_registration.py::TestUserRegistration::test_user_can_register_successfully": true,
+  "test_user_registration.py::TestUserRegistration::test_invalid_email_registration_shows_error": true,
+  "test_user_registration.py::TestUserRegistration::test_existing_user_registration_shows_error": true,
+  "test_add.py::TestAddProduct": true
+}

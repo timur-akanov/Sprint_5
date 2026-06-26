@@ -1,9 +1,0 @@
-[
-  "test_add.py::TestAddProduct::test_authorized_user_can_fill_product_form",
-  "test_login_user.py::TestLoginUser::test_user_can_login",
-  "test_logout_user.py::TestLogoutUser::test_user_can_logout",
-  "test_post_an_ad.py::TestPostAnAdUnauthorized::test_unauthorized_user_sees_auth_modal",
-  "test_user_registration.py::TestUserRegistration::test_existing_user_registration_shows_error",
-  "test_user_registration.py::TestUserRegistration::test_invalid_email_registration_shows_error",
-  "test_user_registration.py::TestUserRegistration::test_user_can_register_successfully"
-]

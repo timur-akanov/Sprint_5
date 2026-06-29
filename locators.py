@@ -51,9 +51,19 @@ class LoginPageLocators:
     )
     CONDITION_RADIO = (By.CSS_SELECTOR, 'input[name="condition"]')
     PUBLISH_BUTTON = (By.CSS_SELECTOR, 'button[type="submit"]')
+    DROPDOWN_OPTIONS = (
+        By.CSS_SELECTOR,
+        "div[class^='dropDownMenu_options'] button"
+    )
 
     CREATE_ACCOUNT_BUTTON = (
         By.XPATH,
         "//button[contains(text(), 'Создать аккаунт')]"
     )
     MY_ADS_TITLE = (By.XPATH, "//*[contains(text(), 'Мои объявления')]")
+    ERROR_MESSAGE = (By.XPATH, "//*[contains(text(), 'Ошибка')]")
+    FIELD_ANCESTORS = (By.XPATH, './ancestor::*')
+
+    @staticmethod
+    def created_ad_title(ad_title):
+        return (By.XPATH, f"//*[contains(text(), '{ad_title}')]")

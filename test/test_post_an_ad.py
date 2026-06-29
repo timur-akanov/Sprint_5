@@ -1,34 +1,41 @@
+import uuid
+
+import pytest
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from locators import LoginPageLocators
-from credentials import BASE_URL
+
+from credentials import EMAIL, PASSWORD, BASE_URL
+from test.helpers import (
+    fill_product_form,
+    is_posted_ad_visible,
+    login,
+    open_post_ad_form,
+    publish_ad,
+    skip_if_empty,
+)
 
 
-class TestPostAnAdUnauthorized:
-    def test_unauthorized_user_sees_auth_modal(self, driver):
+class TestPostAd:
+    def test_authorized_user_can_post_ad(self, driver):
+        skip_if_empty(
+            (EMAIL, PASSWORD),
+            'Заполните EMAIL и PASSWORD в credentials.py',
+            pytest
+        )
+        ad_title = f'Тестовое объявление {uuid.uuid4().hex[:8]}'
+
         driver.get(BASE_URL)
         wait = WebDriverWait(driver, 15)
+        login(wait, EMAIL, PASSWORD)
+        open_post_ad_form(wait)
+        fill_product_form(
+            driver,
+            wait,
+            ad_title,
+            'Это тестовое описание объявления.',
+            '1000'
+        )
+        publish_ad(wait)
 
-        post_button = wait.until(
-            EC.element_to_be_clickable(LoginPageLocators.POST_ADD_BUTTON)
+        assert is_posted_ad_visible(wait, ad_title), (
+            'Созданное объявление не отображается в блоке Мои объявления'
         )
-        post_button.click()
-
-        modal = wait.until(
-            EC.visibility_of_element_located(
-                LoginPageLocators.MODAL_UNAUTHORIZED
-            )
-        )
-        modal_title = wait.until(
-            EC.visibility_of_element_located(
-                LoginPageLocators.MODAL_TITLE_UNAUTHORIZED
-            )
-        )
-
-        assert modal.is_displayed(), (
-            'Модальное окно авторизации не отображается'
-        )
-        assert modal_title.is_displayed(), (
-            'Заголовок модального окна не отображается'
-        )
-        assert 'Чтобы разместить объявление, авторизуйтесь' in modal_title.text
